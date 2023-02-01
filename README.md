@@ -2,11 +2,11 @@
 `keras-model-cv` allows you to cross-validate  `keras` model. 
 ## Installation
 ```python
-pip install keras-cv
+pip install keras-model-cv
 ```
 or
 ```python
-pip install git+https://github.com/dubovikmaster/keras-cv.git
+pip install git+https://github.com/dubovikmaster/keras-model-cv.git
 ```
 
 ## Quickstart
