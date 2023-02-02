@@ -4,6 +4,7 @@ from typing import (
     Optional,
     Union,
     List,
+    Tuple,
     Iterable,
     Any
 
@@ -18,6 +19,7 @@ import tensorflow as tf
 from tensorflow import keras
 from sklearn.model_selection import BaseCrossValidator
 import pandas as pd
+import matplotlib.pyplot as plt
 
 NAMES = ['mysterious', 'incredible', 'beautiful', 'graceful']
 STATUS = {'RUNNING': 0, 'OK': 1}
@@ -230,7 +232,7 @@ class KerasCV:
                 # split_info
                 self._save_yaml(split_info, split_path.joinpath('split_info.yml'))
 
-    def get_cv_history(self):
+    def get_train_history(self):
         history_list = list()
         for i, h in enumerate(self.history):
             df = pd.DataFrame(h)
@@ -254,3 +256,30 @@ class KerasCV:
             agg_func = ['mean', 'std']
         df = self.get_split_scores()
         return df.drop(['split'], axis=1).agg(agg_func)
+
+    def show_train_history(self, metrics: Optional[Union[List[str], str]] = None, fig_size: Tuple[int, int] = (10, 8),
+                           save_fig: bool = False, splits: Optional[List[int]] = None):
+        if isinstance(metrics, str):
+            metrics = [metrics]
+        df = self.get_train_history()
+        if splits is not None:
+            df = df[df.split.isin(splits)]
+        if metrics is not None:
+            df = df[['split', 'epochs'] + metrics]
+        group = df.groupby('split')
+        group_cnt = group.ngroups
+        rows, extra = divmod(group_cnt, 2)
+        if extra:
+            rows += 1
+        fig, ax = plt.subplots(rows, 2, figsize=fig_size)
+        for i, (name, gr) in enumerate(group):
+            s = gr.drop(['split'], axis=1).plot(x='epochs', ax=ax.flat[i], title='split_' + str(name))
+        for ax in ax.flat[group_cnt:]:
+            ax.remove()
+        fig.suptitle('Train history for each split', fontsize=15)
+        fig.tight_layout()
+        if save_fig:
+            plt.savefig(self.project_path.joinpath('train_history_plot.png'))
+            plt.close()
+        else:
+            plt.show()

@@ -70,8 +70,9 @@ Out:
         accuracy    0.92010
 ```
 Also, you can get all train history for each splits as `pandas` dataframe:
+
 ```python
-cv.get_cv_history()
+cv.get_train_history()
 ```
 ```python
 Out:
@@ -86,6 +87,12 @@ Out:
         7  0.556871  0.816875      2       2
         8  0.512916  0.829550      2       3
 ```
+You can show train history as matplotlib plot:
+```python
+cv.show_train_history()
+```
+![](img/my_plot.png)
+
 
 
 What about metrics per splits?

@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="keras_model_cv",
-    version="0.1.1",
+    version="0.2.1",
     description="Cross-validation for keras models",
     license="MIT",
     long_description=long_description,
@@ -14,7 +14,7 @@ setup(
     dec="README.md",
     author="Pavel Dubovik",
     author_email="geometryk@gmail.com",
-    url="https://github.com/dubovikmaster/keras-cv",
+    url="https://github.com/dubovikmaster/keras-model-cv",
     packages=find_packages(),
     include_package_data=True,
     keywords=[
@@ -28,6 +28,7 @@ setup(
         "scikit-learn",
         "pandas",
         "pyyaml",
+        "matplotlib",
     ],
     platforms='any'
 )
