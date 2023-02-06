@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="keras_model_cv",
-    version="0.2.1",
+    version="0.3.0",
     description="Cross-validation for keras models",
     license="MIT",
     long_description=long_description,

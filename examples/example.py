@@ -34,11 +34,11 @@ if __name__ == '__main__':
         PARAMS,
         preprocessor=tf.keras.layers.Normalization(),
         save_history=True,
-        directory='out',
+        directory='my_awesome_project',
         name='my_cv',
         overwrite=True
     )
-    cv.fit(x_train, y_train, verbose=1, epochs=3)
-    print(cv.get_cv_score(agg_func={'loss': min, 'accuracy': max}))
+    cv.fit(x_train, y_train, verbose=1, epochs=7, validation_split=.2)
 
-    print(cv.get_split_scores())
+    print(cv.get_cv_score(agg_func={'loss': min, 'accuracy': max}))
+    print(cv.get_train_history())

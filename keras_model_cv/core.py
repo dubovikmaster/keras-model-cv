@@ -1,4 +1,9 @@
+import contextlib
+import random
+import shutil
 import time
+from os import PathLike
+from pathlib import Path
 from typing import (
     Callable,
     Optional,
@@ -9,17 +14,13 @@ from typing import (
     Any
 
 )
-from pathlib import Path
-from os import PathLike
-import shutil
-import random
 
-import yaml
-import tensorflow as tf
-from tensorflow import keras
-from sklearn.model_selection import BaseCrossValidator
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
+import tensorflow as tf
+import yaml
+from sklearn.model_selection import BaseCrossValidator
+from tensorflow import keras
 
 NAMES = ['mysterious', 'incredible', 'beautiful', 'graceful']
 STATUS = {'RUNNING': 0, 'OK': 1}
@@ -38,6 +39,8 @@ class KerasCV:
             name: Optional[str] = None,
             custom_evaluate: Optional[Callable] = None,
             overwrite: bool = False,
+            distribution_strategy: Optional[tf.distribute.Strategy] = None
+
 
     ):
         self.model_builder = model_builder
@@ -50,6 +53,7 @@ class KerasCV:
         self.history = None
         self.overwrite = overwrite
         self.cv_results = None
+        self.distribution_strategy = distribution_strategy
         self.splits_info = None
         self._multiple_input = None
         self._custom_eval = custom_evaluate
@@ -135,7 +139,9 @@ class KerasCV:
         return x_new
 
     def get_model(self):
-        return self.model_builder(**self.params)
+        with maybe_distribute(self.distribution_strategy):
+            model = self.model_builder(**self.params)
+            return model
 
     def fit(self, x, y, **kwargs):
         self.history = []
@@ -283,3 +289,13 @@ class KerasCV:
             plt.close()
         else:
             plt.show()
+
+
+@contextlib.contextmanager
+def maybe_distribute(distribution_strategy):
+    """Distributes if distribution_strategy is set."""
+    if distribution_strategy is None:
+        yield
+    else:
+        with distribution_strategy.scope():
+            yield
