@@ -264,7 +264,7 @@ class KerasCV:
         return df.drop(['split'], axis=1).agg(agg_func)
 
     def show_train_history(self, metrics: Optional[Union[List[str], str]] = None, fig_size: Tuple[int, int] = (10, 8),
-                           save_fig: bool = False, splits: Optional[List[int]] = None):
+                           save_fig: bool = False, splits: Optional[List[int]] = None, **kwargs):
         if isinstance(metrics, str):
             metrics = [metrics]
         df = self.get_train_history()
@@ -279,7 +279,7 @@ class KerasCV:
             rows += 1
         fig, ax = plt.subplots(rows, 2, figsize=fig_size)
         for i, (name, gr) in enumerate(group):
-            s = gr.drop(['split'], axis=1).plot(x='epochs', ax=ax.flat[i], title='split_' + str(name))
+            s = gr.drop(['split'], axis=1).plot(x='epochs', ax=ax.flat[i], title='split_' + str(name), **kwargs)
         for ax in ax.flat[group_cnt:]:
             ax.remove()
         fig.suptitle('Train history for each split', fontsize=15)
