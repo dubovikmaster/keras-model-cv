@@ -34,6 +34,7 @@ class KerasCV:
             cv: BaseCrossValidator,
             params: dict,
             preprocessor: Optional[Union[Callable, List[Callable]]] = None,
+            supervised_preprocessor: Optional[Union[bool, List[bool]]] = None,
             save_history: bool = False,
             directory: Optional[Union[str, PathLike]] = None,
             name: Optional[str] = None,
@@ -47,6 +48,7 @@ class KerasCV:
         self.cv = cv
         self.params = params
         self.preprocessor = preprocessor
+        self.supervised_preprocessor = supervised_preprocessor
         self.save_history = save_history
         self.directory = directory
         self.name = name
@@ -68,14 +70,17 @@ class KerasCV:
             self.project_path.mkdir(exist_ok=True, parents=True)
 
     @staticmethod
-    def preprocess_data(x: Iterable, preprocessor: Callable, fit_transform: bool):
+    def preprocess_data(x: Iterable, y: Iterable, preprocessor: Callable, supervised: bool,  fit_transform: bool):
         if preprocessor is None:
             return x
         if fit_transform:
             if isinstance(preprocessor, keras.layers.Layer):
                 preprocessor.adapt(x)
                 return preprocessor(x)
-            preprocessor.fit(x)
+            if supervised:
+                preprocessor.fit(x, y)
+            else:
+                preprocessor.fit(x)
             return preprocessor.transform(x)
         if isinstance(preprocessor, keras.layers.Layer):
             return preprocessor(x)
@@ -144,16 +149,19 @@ class KerasCV:
             ValueError(f"Can't find validate metrics  for split {split_number}")
         self.cv_results.append(self._load_yaml(metrics_yml))
 
-    def _prepare_data(self, x, idx: List[int], fit_transform: bool):
+    def _prepare_data(self, x: Iterable, y: Iterable, idx: List[int], fit_transform: bool):
+        y_new = y[idx]
         if self._multiple_input:
             x_new = [i[idx] for i in x]
             if self.preprocessor is not None:
-                x_new = [self.preprocess_data(x_new[i], self.preprocessor[i], fit_transform) for i in
+                x_new = [self.preprocess_data(x_new[i], y_new, self.preprocessor[i], self.supervised_preprocessor[i],
+                                              fit_transform) for i in
                          range(len(self.preprocessor))]
         else:
             x_new = x[idx]
             if self.preprocessor is not None:
-                x_new = self.preprocess_data(x_new, self.preprocessor, fit_transform)
+                x_new = self.preprocess_data(x_new, y_new, self.preprocessor, self.supervised_preprocessor,
+                                             fit_transform)
         return x_new
 
     def get_model(self):
@@ -200,11 +208,11 @@ class KerasCV:
                     + "\n"
                 )
             # prepare train data
-            x_train = self._prepare_data(x, train_index, fit_transform=True)
+            x_train = self._prepare_data(x, y, train_index, fit_transform=True)
             y_train = y[train_index]
 
             # prepare test data
-            x_test = self._prepare_data(x, test_index, fit_transform=False)
+            x_test = self._prepare_data(x, y,  test_index, fit_transform=False)
             y_test = y[test_index]
             # get model
             model = self.get_model()

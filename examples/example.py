@@ -33,6 +33,7 @@ if __name__ == '__main__':
         KFold(n_splits=3, random_state=1234, shuffle=True),
         PARAMS,
         preprocessor=tf.keras.layers.Normalization(),
+        supervised_preprocessor=False,
         save_history=True,
         directory='my_awesome_project',
         name='my_cv',
