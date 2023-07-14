@@ -14,6 +14,7 @@ from typing import (
     Any
 
 )
+import copy
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -59,7 +60,8 @@ class KerasCV:
         self.splits_info = None
         self._multiple_input = None
         self._custom_eval = custom_evaluate
-        self._model_checkpoint = None
+        self._model_checkpoint_deepcopy = None
+        self._model_checkpoint_new_filepath = None
 
         if self.save_history:
             if self.name is None:
@@ -96,21 +98,25 @@ class KerasCV:
         return yml
 
     def _load_best_model(self, model):
-        if self._model_checkpoint.save_best_only:
-            model = tf.keras.models.load_model(self._model_checkpoint.filepath)
+        if self._model_checkpoint_deepcopy.save_best_only:
+            model = tf.keras.models.load_model(self._model_checkpoint_new_filepath)
         else:
-            model.load_weights(self._model_checkpoint.filepath)
+            model.load_weights(self._model_checkpoint_new_filepath)
         return model
 
     def _find_model_checkpoint(self, kwargs):
         if 'callbacks' in kwargs:
             if isinstance(kwargs['callbacks'], list):
-                for callback in kwargs['callbacks']:
+                callbacks = list(kwargs['callbacks'])
+                for callback in callbacks:
                     if isinstance(callback, tf.keras.callbacks.ModelCheckpoint):
-                        self._has_model_checkpoint = callback
+                        self._model_checkpoint_deepcopy = copy.deepcopy(callback)
+                        kwargs['callbacks'].remove(callback)
+                        break
             else:
                 if isinstance(kwargs['callbacks'], tf.keras.callbacks.ModelCheckpoint):
-                    self._has_model_checkpoint = kwargs['callbacks']
+                    self._model_checkpoint_deepcopy = copy.deepcopy(kwargs['callbacks'])
+                    kwargs['callbacks'] = []
 
     def _get_split_path(self, split_number: int):
         split_path = self.project_path.joinpath(f'split_{split_number}')
@@ -170,7 +176,8 @@ class KerasCV:
             return model
 
     def fit(self, x, y, **kwargs):
-        self._model_checkpoint = None
+        self._model_checkpoint_deepcopy = None
+        self._model_checkpoint_new_filepath = None
         self.history = []
         self.cv_results = []
         self.splits_info = []
@@ -185,6 +192,11 @@ class KerasCV:
         self._find_model_checkpoint(kwargs)
         for split, (train_index, test_index) in enumerate(
                 self.cv.split(range(n_sample), y)):
+            if self._model_checkpoint_deepcopy:
+                callback = copy.deepcopy(self._model_checkpoint_deepcopy)
+                callback.filepath = self._model_checkpoint_deepcopy.filepath + f'/split_{split}'
+                self._model_checkpoint_new_filepath = callback.filepath
+                kwargs['callbacks'].append(callback)
             if self.save_history and not self.overwrite:
                 split_status = self._check_split_status(split)
                 if split_status:
@@ -227,7 +239,7 @@ class KerasCV:
                 + "-" * 31
                 + "\n"
             )
-            if self._model_checkpoint:
+            if self._model_checkpoint_deepcopy:
                 model = self._load_best_model(model)
             if self._custom_eval:
                 y_pred = model.predict(
