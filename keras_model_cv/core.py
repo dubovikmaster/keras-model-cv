@@ -78,10 +78,10 @@ class KerasCV:
                 preprocessor.adapt(x)
                 return preprocessor(x)
             if supervised:
-                preprocessor.fit(x, y)
+                new_x = preprocessor.fit_transform(x, y)
             else:
-                preprocessor.fit(x)
-            return preprocessor.transform(x)
+                new_x = preprocessor.fit_transform(x)
+            return new_x
         if isinstance(preprocessor, keras.layers.Layer):
             return preprocessor(x)
         return preprocessor.transform(x)
