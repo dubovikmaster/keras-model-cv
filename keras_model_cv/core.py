@@ -57,6 +57,7 @@ class KerasCV:
         self.splits_info = None
         self._multiple_input = None
         self._custom_eval = custom_evaluate
+        self._model_checkpoint = None
 
         if self.save_history:
             if self.name is None:
@@ -88,6 +89,23 @@ class KerasCV:
     def _load_yaml(filename: PathLike):
         yml = yaml.load(stream=open(filename, 'r'), Loader=yaml.FullLoader)
         return yml
+
+    def _load_best_model(self, model):
+        if self._model_checkpoint.save_best_only:
+            model = tf.keras.models.load_model(self._model_checkpoint.filepath)
+        else:
+            model.load_weights(self._model_checkpoint.filepath)
+        return model
+
+    def _find_model_checkpoint(self, kwargs):
+        if 'callbacks' in kwargs:
+            if isinstance(kwargs['callbacks'], list):
+                for callback in kwargs['callbacks']:
+                    if isinstance(callback, tf.keras.callbacks.ModelCheckpoint):
+                        self._has_model_checkpoint = callback
+            else:
+                if isinstance(kwargs['callbacks'], tf.keras.callbacks.ModelCheckpoint):
+                    self._has_model_checkpoint = kwargs['callbacks']
 
     def _get_split_path(self, split_number: int):
         split_path = self.project_path.joinpath(f'split_{split_number}')
@@ -144,6 +162,7 @@ class KerasCV:
             return model
 
     def fit(self, x, y, **kwargs):
+        self._model_checkpoint = None
         self.history = []
         self.cv_results = []
         self.splits_info = []
@@ -155,6 +174,7 @@ class KerasCV:
         else:
             self._multiple_input = False
             n_sample = len(x)
+        self._find_model_checkpoint(kwargs)
         for split, (train_index, test_index) in enumerate(
                 self.cv.split(range(n_sample), y)):
             if self.save_history and not self.overwrite:
@@ -188,7 +208,6 @@ class KerasCV:
             y_test = y[test_index]
             # get model
             model = self.get_model()
-
             # train model
             history = model.fit(x_train, y_train, **kwargs)
             self.history.append(history.history)
@@ -200,6 +219,8 @@ class KerasCV:
                 + "-" * 31
                 + "\n"
             )
+            if self._model_checkpoint:
+                model = self._load_best_model(model)
             if self._custom_eval:
                 y_pred = model.predict(
                     x_test,

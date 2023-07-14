@@ -38,7 +38,16 @@ if __name__ == '__main__':
         name='my_cv',
         overwrite=True
     )
-    cv.fit(x_train, y_train, verbose=1, epochs=7, validation_split=.2)
+    cv.fit(x_train,
+           y_train,
+           verbose=1,
+           epochs=7,
+           callbacks=tf.keras.callbacks.ModelCheckpoint('model_chekpoint',
+                                                        save_best_only=True,
+                                                        monitor='val_accuracy',
+                                                        mode='max'
+                                                        ),
+           validation_split=.2)
 
     print(cv.get_cv_score(agg_func={'loss': min, 'accuracy': max}))
-    print(cv.get_train_history())
+    print(cv.get_split_scores())
