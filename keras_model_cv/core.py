@@ -26,6 +26,9 @@ from tensorflow import keras
 NAMES = ['mysterious', 'incredible', 'beautiful', 'graceful']
 STATUS = {'RUNNING': 0, 'OK': 1}
 
+logger = tf.get_logger()
+logger.propagate = False
+
 
 class KerasCV:
 
@@ -212,7 +215,7 @@ class KerasCV:
                 self._save_yaml(split_info, split_path.joinpath('split_info.yml'))
             keras.backend.clear_session()
             if kwargs.get('verbose', 0):
-                tf.get_logger().info(
+                logger.info(
                     "\n" + "-" * 31 + "\n"
                                       f"Cross-Validation {split + 1}/{self.cv.get_n_splits()}"
                     + "\n"
@@ -232,7 +235,7 @@ class KerasCV:
             history = model.fit(x_train, y_train, **kwargs)
             self.history.append(history.history)
 
-            tf.get_logger().info(
+            logger.info(
                 "\n" + "-" * 31 + "\n"
                                   "Evaluate validation performance"
                 + "\n"
@@ -262,7 +265,7 @@ class KerasCV:
                 self.cv_results.append(val_res)
             val_res['split'] = split
             end = round(time.perf_counter() - start, 1)
-            tf.get_logger().info(
+            logger.info(
                 "\n" + "-" * 31 + "\n"
                                   f"Split {split + 1}/{self.cv.get_n_splits()} time took: {end} s."
                 + "\n"
