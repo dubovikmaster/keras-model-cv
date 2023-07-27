@@ -1,3 +1,4 @@
+import gc
 import contextlib
 import random
 import shutil
@@ -24,6 +25,8 @@ from sklearn.model_selection import BaseCrossValidator
 from tensorflow import keras
 
 from tqdm.auto import tqdm
+
+import numpy as np
 
 NAMES = ['mysterious', 'incredible', 'beautiful', 'graceful']
 STATUS = {'RUNNING': 0, 'OK': 1}
@@ -203,7 +206,8 @@ class KerasCV:
             n_sample = len(x)
         self._find_model_checkpoint(kwargs)
         for split, (train_index, test_index) in enumerate(tqdm(
-                self.cv.split(range(n_sample), y), total=self.cv.n_splits, disable=self.disable_pr_bar)):
+                self.cv.split(range(n_sample), y), total=self.cv.n_splits,
+                disable=self.disable_pr_bar, desc='DONE SPLITS')):
             if self._model_checkpoint_deepcopy:
                 callback = copy.deepcopy(self._model_checkpoint_deepcopy)
                 callback.filepath = self._model_checkpoint_deepcopy.filepath + f'/split_{split}'
@@ -262,7 +266,7 @@ class KerasCV:
                     val_res = self._custom_eval(y_test, y_pred, test_index)
                 else:
                     val_res = self._custom_eval(y_test, y_pred)
-                if isinstance(val_res, (float, int)):
+                if isinstance(val_res, (float, int, np.number)):
                     val_res = {'custom_metric': val_res}
                 self.cv_results.append(val_res)
             else:
@@ -293,6 +297,7 @@ class KerasCV:
                 self._save_yaml(val_res, split_path.joinpath('validation_metric.yml'))
                 # split_info
                 self._save_yaml(split_info, split_path.joinpath('split_info.yml'))
+            gc.collect()
 
     def get_train_history(self):
         history_list = list()
