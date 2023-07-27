@@ -37,7 +37,8 @@ if __name__ == '__main__':
         save_history=True,
         directory='my_awesome_project',
         name='my_cv',
-        overwrite=True
+        overwrite=True,
+        disable_pr_bar=True
     )
     cv.fit(x_train,
            y_train,
@@ -46,7 +47,8 @@ if __name__ == '__main__':
            callbacks=tf.keras.callbacks.ModelCheckpoint('model_chekpoint',
                                                         save_best_only=True,
                                                         monitor='val_accuracy',
-                                                        mode='max'
+                                                        mode='max',
+                                                        verbose=0
                                                         ),
            validation_split=.2)
 

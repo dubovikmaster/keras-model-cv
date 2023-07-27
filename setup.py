@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="keras_model_cv",
-    version="0.5.4",
+    version="0.6.1",
     description="Cross-validation for keras models",
     license="MIT",
     long_description=long_description,
@@ -29,6 +29,7 @@ setup(
         "pandas",
         "pyyaml",
         "matplotlib",
+        "tqdm",
     ],
     platforms='any'
 )

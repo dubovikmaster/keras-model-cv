@@ -23,6 +23,8 @@ import yaml
 from sklearn.model_selection import BaseCrossValidator
 from tensorflow import keras
 
+from tqdm.auto import tqdm
+
 NAMES = ['mysterious', 'incredible', 'beautiful', 'graceful']
 STATUS = {'RUNNING': 0, 'OK': 1}
 
@@ -43,8 +45,11 @@ class KerasCV:
             directory: Optional[Union[str, PathLike]] = None,
             name: Optional[str] = None,
             custom_evaluate: Optional[Callable] = None,
+            needed_test_indexes_for_custom_metric: bool = False,
             overwrite: bool = False,
-            distribution_strategy: Optional[tf.distribute.Strategy] = None
+            distribution_strategy: Optional[tf.distribute.Strategy] = None,
+            disable_pr_bar: bool = True,
+            random_seed: int = 0
 
 
     ):
@@ -58,9 +63,12 @@ class KerasCV:
         self.name = name
         self.history = None
         self.overwrite = overwrite
+        self.needed_test_indexes = needed_test_indexes_for_custom_metric
         self.cv_results = None
         self.distribution_strategy = distribution_strategy
         self.splits_info = None
+        self.disable_pr_bar = disable_pr_bar
+        self.random_seed = random_seed
         self._multiple_input = None
         self._custom_eval = custom_evaluate
         self._model_checkpoint_deepcopy = None
@@ -175,6 +183,7 @@ class KerasCV:
 
     def get_model(self):
         with maybe_distribute(self.distribution_strategy):
+            tf.keras.utils.set_random_seed(self.random_seed)
             model = self.model_builder(**self.params)
             return model
 
@@ -193,8 +202,8 @@ class KerasCV:
             self._multiple_input = False
             n_sample = len(x)
         self._find_model_checkpoint(kwargs)
-        for split, (train_index, test_index) in enumerate(
-                self.cv.split(range(n_sample), y)):
+        for split, (train_index, test_index) in enumerate(tqdm(
+                self.cv.split(range(n_sample), y), total=self.cv.n_splits, disable=self.disable_pr_bar)):
             if self._model_checkpoint_deepcopy:
                 callback = copy.deepcopy(self._model_checkpoint_deepcopy)
                 callback.filepath = self._model_checkpoint_deepcopy.filepath + f'/split_{split}'
@@ -213,7 +222,6 @@ class KerasCV:
             if self.save_history:
                 split_path = self._get_split_path(split_number=split)
                 self._save_yaml(split_info, split_path.joinpath('split_info.yml'))
-            keras.backend.clear_session()
             if kwargs.get('verbose', 0):
                 logger.info(
                     "\n" + "-" * 31 + "\n"
@@ -234,14 +242,14 @@ class KerasCV:
             # train model
             history = model.fit(x_train, y_train, **kwargs)
             self.history.append(history.history)
-
-            logger.info(
-                "\n" + "-" * 31 + "\n"
-                                  "Evaluate validation performance"
-                + "\n"
-                + "-" * 31
-                + "\n"
-            )
+            if kwargs.get('verbose', 0):
+                logger.info(
+                    "\n" + "-" * 31 + "\n"
+                                      "Evaluate validation performance"
+                    + "\n"
+                    + "-" * 31
+                    + "\n"
+                )
             if self._model_checkpoint_deepcopy:
                 model = self._load_best_model(model)
             if self._custom_eval:
@@ -250,7 +258,10 @@ class KerasCV:
                     batch_size=kwargs.get('batch_size', 32),
                     verbose=kwargs.get('verbose', 0),
                 )
-                val_res = self._custom_eval(y_test, y_pred)
+                if self.needed_test_indexes:
+                    val_res = self._custom_eval(y_test, y_pred, test_index)
+                else:
+                    val_res = self._custom_eval(y_test, y_pred)
                 if isinstance(val_res, (float, int)):
                     val_res = {'custom_metric': val_res}
                 self.cv_results.append(val_res)
@@ -265,11 +276,12 @@ class KerasCV:
                 self.cv_results.append(val_res)
             val_res['split'] = split
             end = round(time.perf_counter() - start, 1)
-            logger.info(
-                "\n" + "-" * 31 + "\n"
-                                  f"Split {split + 1}/{self.cv.get_n_splits()} time took: {end} s."
-                + "\n"
-            )
+            if kwargs.get('verbose', 0):
+                logger.info(
+                    "\n" + "-" * 31 + "\n"
+                                      f"Split {split + 1}/{self.cv.get_n_splits()} time took: {end} s."
+                    + "\n"
+                )
 
             split_info['status'] = 'OK'
             split_info['end_time'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
